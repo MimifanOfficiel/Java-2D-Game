@@ -1,5 +1,6 @@
 package fr.mimifan.j2d.panels;
 
+import fr.mimifan.j2d.entities.Player;
 import fr.mimifan.j2d.listeners.KeyHandler;
 
 import javax.swing.*;
@@ -7,22 +8,21 @@ import java.awt.*;
 
 public class GamePanel extends JPanel implements Runnable {
 
-    final int originalTileSize = 16; // Each tile is 16x16 pixels
-    final int scale = 3;
-    final int tileSize = originalTileSize * scale;
+    public final int originalTileSize = 16; // Each tile is 16x16 pixels
+    public final int scale = 3;
+    public final int tileSize = originalTileSize * scale;
 
-    final int maxScreenCol = 16;
-    final int maxScreenRow = 12;
-    final int screenWidth = maxScreenCol * tileSize;
-    final int screenHeight = maxScreenRow * tileSize;
+    public final int maxScreenCol = 16;
+    public final int maxScreenRow = 12;
+    public final int screenWidth = maxScreenCol * tileSize;
+    public final int screenHeight = maxScreenRow * tileSize;
 
     int maxFPS = 60;
 
     Thread gameThread;
     KeyHandler keyHandler = new KeyHandler();
 
-    int playerX = 100, playerY = 100;
-    int playerSpeed = 4;
+    Player player = new Player(this, keyHandler);
 
 
     public GamePanel() {
@@ -40,45 +40,42 @@ public class GamePanel extends JPanel implements Runnable {
 
     @Override
     public void run() {
-            double drawInterval = 1000000000/maxFPS;
-            double nextDrawTime = System.nanoTime() + drawInterval;
+        double drawInterval = 1000000000/maxFPS;
+        double delta = 0;
+        long lastTime = System.nanoTime();
+        long currentTime;
+
+        long timer = 0;
+        int drawCount = 0;
 
         while (gameThread != null) {
+            currentTime = System.nanoTime();
+            delta += (currentTime - lastTime) / drawInterval;
+            timer += (currentTime - lastTime);
+            lastTime = currentTime;
 
-            update();
+            if(delta >= 1) {
+                update();
+                repaint();
+                delta--;
+                drawCount++;
+            }
 
-
-            repaint();
-
-            try {
-                double remainingTime = nextDrawTime - System.nanoTime();
-                remainingTime = remainingTime/1000000;
-
-                if(remainingTime < 0) remainingTime = 0;
-
-                Thread.sleep((long)remainingTime);
-
-                nextDrawTime += drawInterval;
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            if(timer >= 1000000000) {
+                System.out.println("FPS: " + drawCount);
+                drawCount = 0;
+                timer = 0;
             }
         }
     }
 
     public void update() {
-        int deltaX = (keyHandler.rightPressed ? playerSpeed : 0) - (keyHandler.leftPressed ? playerSpeed : 0);
-        int deltaY = (keyHandler.downPressed ? playerSpeed : 0) - (keyHandler.upPressed ? playerSpeed : 0);
-
-        playerX += deltaX;
-        playerY += deltaY;
+        player.update();
     }
 
 
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
-        Graphics2D g2d = (Graphics2D) g;
-        g2d.setColor(Color.white);
-        g2d.fillRect(playerX, playerY, tileSize, tileSize);
-        g2d.dispose();
+        player.draw((Graphics2D)g);
     }
 }
